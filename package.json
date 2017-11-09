@@ -22,15 +22,14 @@
     "test": "mocha && npm run lint",
     "coverage": "istanbul cover ./node_modules/.bin/_mocha --report lcovonly",
     "postcoverage": "istanbul check-coverage coverage/coverage.json --statements 100",
-    "prethought": "thought --version || npm -g install thought",
     "thought": "thought run -a",
-    "preversion": "thought --version || npm -g install thought",
     "version": "thoughtful changelog -o -a && npm run thought"
   },
   "dependencies": {
     "bluebird": "^3.5.1",
     "crypt3": "^1.0.0",
-    "pify": "^3.0.0"
+    "pify": "^3.0.0",
+    "thought": "^1.5.2"
   },
   "devDependencies": {
     "chai": "^3.5.0",
