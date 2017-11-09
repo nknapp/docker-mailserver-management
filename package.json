@@ -27,7 +27,11 @@
     "preversion": "thought --version || npm -g install thought",
     "version": "thoughtful changelog -o -a && npm run thought"
   },
-  "dependencies": {},
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "crypt3": "^1.0.0",
+    "pify": "^3.0.0"
+  },
   "devDependencies": {
     "chai": "^3.5.0",
     "dirty-chai": "^1.2.2",
