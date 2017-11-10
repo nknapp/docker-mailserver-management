@@ -6,6 +6,15 @@
 
 > A management api and ui for the docker-mailserver project
 
+This project is becoming a user-management-tool for the [docker-mailserver](https://github.com/tomav/docker-mailserves)
+project.
+
+First impressions can be drawn from the class [postfix-accounts.js](src/postfix-accounts.js) that is able to 
+modify the `postfix-accounts.cf`-file from the docker-mailserver.
+
+The final goal is to have an API and Web-Interface that can be exposed by users of `docker-mailserver` to let users
+change that own password.
+
 
 # Installation
 
