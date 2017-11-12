@@ -1,12 +1,14 @@
 const crypt = require('crypt3/sync')
 const pify = require('pify')
 const fs = pify(require('fs'))
+const events = require('events')
 
 /**
  * Class for managing the postfix-accounts file
  */
-class PostfixAccounts {
+class PostfixAccounts extends events.EventEmitter {
   constructor (filename, accounts) {
+    super()
     this.filename = filename
     this.accounts = accounts
   }
@@ -22,6 +24,7 @@ class PostfixAccounts {
       throw new UserExistsError(username)
     }
     this.accounts[username] = await PostfixAccounts.createPasswordHash(password)
+    this.emit('modified')
     return this
   }
 
@@ -36,6 +39,7 @@ class PostfixAccounts {
       throw new NoUserError(username)
     }
     delete this.accounts[username]
+    this.emit('modified')
     return this
   }
 
@@ -50,6 +54,7 @@ class PostfixAccounts {
       throw new NoUserError(username)
     }
     this.accounts[username] = await PostfixAccounts.createPasswordHash(password)
+    this.emit('modified')
     return this
   }
 
@@ -62,9 +67,11 @@ class PostfixAccounts {
    */
   async assertUserPassword (username, password) {
     if (!this.accounts[username]) {
+      this.emit('authFailed', username)
       throw new AuthenticationError(`User "${username}" does not exist`)
     }
     if (!await PostfixAccounts.verifyPassword(password, this.accounts[username])) {
+      this.emit('authFailed', username)
       throw new AuthenticationError('Password does not match.')
     }
   }
@@ -90,6 +97,7 @@ class PostfixAccounts {
       .map((username) => `${username}|${this.accounts[username]}\n`)
       .join('')
     await fs.writeFile(this.filename, contents)
+    this.emit('saved', this.filename)
     return this
   }
 
@@ -119,6 +127,7 @@ class PostfixAccounts {
         this.accounts[username] = hash
       }
     })
+    this.emit('loaded', this.filename)
     return this
   }
 

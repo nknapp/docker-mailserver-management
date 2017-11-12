@@ -36,6 +36,22 @@ function hashFor (password) {
   return `{SHA512-CRYPT}${crypt(password, SALT)}`
 }
 
+/**
+ * Returns an object that will be filled with event-counts from the PostfixAccounts object
+ * @param {PostfixAccounts} postfixAccounts
+ * @return {object<number>} an object with a counter for each event
+ */
+function eventCounter (postfixAccounts) {
+  const eventLog = {}
+  ;['modified', 'saved', 'loaded', 'authFailed'].forEach((eventName) => {
+    eventLog[eventName] = []
+    postfixAccounts.on(eventName, function () {
+      return eventLog[eventName].push(Array.prototype.slice.apply(arguments))
+    })
+  })
+  return eventLog
+}
+
 describe('postfix-accounts:', function () {
   let originalSHA512Salter
 
@@ -87,21 +103,25 @@ describe('postfix-accounts:', function () {
   describe('the #reload function', function () {
     it('should reload the loaded accounts file', async function () {
       let postfixAccounts = await PostfixAccounts.load('test-tmp/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       fs.writeFileSync('test-tmp/fixtures/postfix-accounts.cf', fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf'))
       await postfixAccounts.reload()
       await expect(postfixAccounts.accounts).to.deep.equal(fixtureOnlyRailtest)
+      expect(events.loaded, 'Checking "loaded" events').to.deep.equal([['test-tmp/fixtures/postfix-accounts.cf']])
     })
   })
 
   describe('the #addUser function', function () {
     it('should add a new account', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await postfixAccounts.addUser('sailtest@test.knappi.org', 'abc')
       expect(postfixAccounts.accounts).to.deep.equal({
         'mailtest@test.knappi.org': fixture['mailtest@test.knappi.org'],
         'railtest@test.knappi.org': fixture['railtest@test.knappi.org'],
         'sailtest@test.knappi.org': hashFor('abc')
       })
+      expect(events.modified.length, 'Checking count for "modified" events').to.deep.equal(1)
     })
 
     it('should throw an exception if the user already exists', async function () {
@@ -113,10 +133,12 @@ describe('postfix-accounts:', function () {
   describe('the #removeUser function', function () {
     it('should remove an account', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await postfixAccounts.removeUser('mailtest@test.knappi.org')
       expect(postfixAccounts.accounts).to.deep.equal({
         'railtest@test.knappi.org': fixture['railtest@test.knappi.org']
       })
+      expect(events.modified.length, 'Checking count for "modified" events').to.equal(1)
     })
 
     it('should throw an exception if the user does not exist', async function () {
@@ -128,11 +150,13 @@ describe('postfix-accounts:', function () {
   describe('the #updateUser function', function () {
     it('should update the password of an account', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await postfixAccounts.updateUser('mailtest@test.knappi.org', 'xyz')
       await expect(postfixAccounts.accounts).to.deep.equal({
         'mailtest@test.knappi.org': hashFor('xyz'),
         'railtest@test.knappi.org': fixture['railtest@test.knappi.org']
       })
+      expect(events.modified.length, 'Checking count for "modified" events').to.equal(1)
     })
 
     it('should throw an exception if the user does not exist', async function () {
@@ -144,45 +168,57 @@ describe('postfix-accounts:', function () {
   describe('the #assertUserPassword function', function () {
     it('should throw an exception if the user does not exist', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await expect(postfixAccounts.assertUserPassword('missing@test.knappi.org', 'abc')).to.be.rejectedWith(AuthenticationError)
+      expect(events.authFailed, 'Checking "authFailed" events').to.deep.equal([['missing@test.knappi.org']])
     })
 
     it('should throw an exception if the password does not match the users password', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await expect(postfixAccounts.assertUserPassword('mailtest@test.knappi.org', 'def')).to.be.rejectedWith(AuthenticationError)
+      expect(events.authFailed, 'Checking "authFailed" events').to.deep.equal([['mailtest@test.knappi.org']])
     })
   })
 
   describe('the #verifyAndUpdateUserPassword function', function () {
     it('should throw an exception if the user does not exist', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await expect(postfixAccounts.verifyAndUpdateUserPassword('missing@test.knappi.org', 'abc', 'bcd')).to.be.rejectedWith(AuthenticationError)
+      expect(events.authFailed, 'Checking "authFailed" events').to.deep.equal([['missing@test.knappi.org']])
     })
 
     it('should throw an exception if the password does not match the users password', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await expect(postfixAccounts.verifyAndUpdateUserPassword('mailtest@test.knappi.org', 'def', 'efg')).to.be.rejectedWith(AuthenticationError)
       await expect(postfixAccounts.accounts['mailtest@test.knappi.org'], 'Password may not have changed')
         .to.equal(fixture['mailtest@test.knappi.org'])
+      expect(events.authFailed, 'Checking "authFailed" events').to.deep.equal([['mailtest@test.knappi.org']])
     })
 
     it('should update the password of an account if user and oldPassword are is valid', async function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await postfixAccounts.verifyAndUpdateUserPassword('mailtest@test.knappi.org', 'abc', 'efg')
       await expect(postfixAccounts.accounts).to.deep.equal({
         'mailtest@test.knappi.org': hashFor('efg'),
         'railtest@test.knappi.org': fixture['railtest@test.knappi.org']
       })
+      expect(events.modified.length, 'Checking count for "modified" events').to.equal(1)
     })
   })
 
   describe('the #save function', function () {
     it('should store the accounts into a file', async function () {
       let postfixAccounts = await PostfixAccounts.load('test-tmp/fixtures/postfix-accounts.cf')
+      let events = eventCounter(postfixAccounts)
       await postfixAccounts.removeUser('mailtest@test.knappi.org')
       await postfixAccounts.save()
       await expect(fs.readFileSync('test-tmp/fixtures/postfix-accounts.cf', 'utf-8'))
         .to.equal(fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf', 'utf-8'))
+      expect(events.saved, 'Checking "saved" events').to.deep.equal([['test-tmp/fixtures/postfix-accounts.cf']])
     })
   })
 })
