@@ -8,33 +8,13 @@
 /* eslint-env mocha */
 
 const {PostfixAccounts, UserExistsError, NoUserError, AuthenticationError} = require('../src/postfix-accounts')
-const crypt = require('crypt3')
 const fs = require('fs')
-const pify = require('pify')
-const cpr = pify(require('cpr'))
+const {mochaSetup, fixture, hashFor} = require('./_utils')
 
 const chai = require('chai')
 chai.use(require('dirty-chai'))
 chai.use(require('chai-as-promised'))
 const expect = chai.expect
-
-// Constant salt used for hashes in these test cases
-const SALT = '$6$V5oMyA+u8Q2U/g=='
-
-// Original contents of the fixture "postfix-accounts.cf"
-const fixture = {
-  'mailtest@test.knappi.org': '{SHA512-CRYPT}$6$UeXF8rxTS/a7bHrp$yQaj.9fgyDckIP3pgspd6YKUsyN8K54Am3n5kSpYwFG3C1gHKAM4MlfCcBkJsd5vB/UNAPfUlA6ShOIQa4Vmr/',
-  'railtest@test.knappi.org': '{SHA512-CRYPT}$6$y628bqC.aK2m.ncq$/f9ARypMSviNXMD1ZqdFO6B9Vl8O6X.7ZIauNm34bpUCWnDg91C9OgcnQ/7XZh7rCt1JPQfc/g/vpRdWTqbp0/'
-}
-
-const fixtureOnlyRailtest = {
-  'railtest@test.knappi.org': '{SHA512-CRYPT}$6$y628bqC.aK2m.ncq$/f9ARypMSviNXMD1ZqdFO6B9Vl8O6X.7ZIauNm34bpUCWnDg91C9OgcnQ/7XZh7rCt1JPQfc/g/vpRdWTqbp0/'
-}
-
-// Compute expected hash for a password
-function hashFor (password) {
-  return `{SHA512-CRYPT}${crypt(password, SALT)}`
-}
 
 /**
  * Returns an object that will be filled with event-counts from the PostfixAccounts object
@@ -52,19 +32,12 @@ function eventCounter (postfixAccounts) {
   return eventLog
 }
 
+const fixtureOnlyRailtest = {
+  'railtest@test.knappi.org': fixture['railtest@test.knappi.org']
+}
+
 describe('postfix-accounts:', function () {
-  let originalSHA512Salter
-
-  // mock "createSalt" to get deterministic hashes
-  beforeEach(async () => {
-    await cpr('test/fixtures', 'test-tmp/fixtures', {deleteFirst: true})
-    originalSHA512Salter = crypt.createSalt.salters['sha512']
-    crypt.createSalt.salters['sha512'] = () => SALT
-  })
-
-  afterEach(() => {
-    crypt.createSalt.salters['sha512'] = originalSHA512Salter
-  })
+  mochaSetup()
 
   describe('the static method #createPasswordHash and #verifyPassword', function () {
     it('should create a password hash from a password in the dovecot form ({SHA-512}$6$...', async function () {
@@ -83,8 +56,8 @@ describe('postfix-accounts:', function () {
     })
 
     it('should not verify a password hash created by doveadm', async function () {
-      let doveHash = '{SHA512-CRYPT}$6$fIGcYDOu6Acq361c$Xj/DuVClJrKEFWWu4irr8So6GwqwGdSbiMU3tG.RlM/4hoQMIIsqHry21zqmd/McsAVeH5/meBL1kc8wWBfwJ.'
-      expect(await PostfixAccounts.verifyPassword('abc', doveHash)).to.be.true()
+      let dovecotHash = '{SHA512-CRYPT}$6$fIGcYDOu6Acq361c$Xj/DuVClJrKEFWWu4irr8So6GwqwGdSbiMU3tG.RlM/4hoQMIIsqHry21zqmd/McsAVeH5/meBL1kc8wWBfwJ.'
+      expect(await PostfixAccounts.verifyPassword('abc', dovecotHash)).to.be.true()
     })
   })
 

@@ -15,7 +15,9 @@
   "bugs": {
     "url": "https://github.com/nknapp/docker-mailserver-management/issues"
   },
-  "main": "src/index.js",
+  "bin": {
+    "docker-mailserver-management": "bin/main.js"
+  },
   "license": "MIT",
   "scripts": {
     "lint": "eslint --fix .",
@@ -27,11 +29,16 @@
   },
   "dependencies": {
     "bluebird": "^3.5.1",
+    "body-parser": "^1.18.2",
     "chai-as-promised": "^7.1.1",
+    "chokidar": "^1.7.0",
     "crypt3": "^1.0.0",
+    "express": "^4.16.2",
+    "lodash.debounce": "^4.0.8",
     "npm-check-updates": "^2.13.0",
     "pify": "^3.0.0",
-    "thought": "^1.5.2"
+    "thought": "^1.5.2",
+    "yargs": "^10.0.3"
   },
   "devDependencies": {
     "chai": "^4.1.2",
@@ -46,8 +53,10 @@
     "istanbul": "^1.1.0-alpha.1",
     "mocha": "^4.0.1",
     "mock-fs": "^4.4.2",
+    "popsicle": "^9.2.0",
+    "spy": "^1.0.0",
     "thoughtful-release": "^0.3.1",
-    "trace-and-clarify-if-possible": "^1.0.0"
+    "trace-and-clarify-if-possible": "^1.0.1"
   },
   "standard": {
     "ignore": [
