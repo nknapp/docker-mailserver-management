@@ -10,12 +10,13 @@
 const {PostfixAccounts, UserExistsError, NoUserError, AuthenticationError} = require('../src/postfix-accounts')
 const crypt = require('crypt3')
 const fs = require('fs')
+const pify = require('pify')
+const cpr = pify(require('cpr'))
 
 const chai = require('chai')
 chai.use(require('dirty-chai'))
 chai.use(require('chai-as-promised'))
 const expect = chai.expect
-const mockFs = require('mock-fs')
 
 // Constant salt used for hashes in these test cases
 const SALT = '$6$V5oMyA+u8Q2U/g=='
@@ -23,6 +24,10 @@ const SALT = '$6$V5oMyA+u8Q2U/g=='
 // Original contents of the fixture "postfix-accounts.cf"
 const fixture = {
   'mailtest@test.knappi.org': '{SHA512-CRYPT}$6$UeXF8rxTS/a7bHrp$yQaj.9fgyDckIP3pgspd6YKUsyN8K54Am3n5kSpYwFG3C1gHKAM4MlfCcBkJsd5vB/UNAPfUlA6ShOIQa4Vmr/',
+  'railtest@test.knappi.org': '{SHA512-CRYPT}$6$y628bqC.aK2m.ncq$/f9ARypMSviNXMD1ZqdFO6B9Vl8O6X.7ZIauNm34bpUCWnDg91C9OgcnQ/7XZh7rCt1JPQfc/g/vpRdWTqbp0/'
+}
+
+const fixtureOnlyRailtest = {
   'railtest@test.knappi.org': '{SHA512-CRYPT}$6$y628bqC.aK2m.ncq$/f9ARypMSviNXMD1ZqdFO6B9Vl8O6X.7ZIauNm34bpUCWnDg91C9OgcnQ/7XZh7rCt1JPQfc/g/vpRdWTqbp0/'
 }
 
@@ -35,13 +40,13 @@ describe('postfix-accounts:', function () {
   let originalSHA512Salter
 
   // mock "createSalt" to get deterministic hashes
-  beforeEach(() => {
+  beforeEach(async () => {
+    await cpr('test/fixtures', 'test-tmp/fixtures', {deleteFirst: true})
     originalSHA512Salter = crypt.createSalt.salters['sha512']
     crypt.createSalt.salters['sha512'] = () => SALT
   })
 
   afterEach(() => {
-    mockFs.restore()
     crypt.createSalt.salters['sha512'] = originalSHA512Salter
   })
 
@@ -77,7 +82,15 @@ describe('postfix-accounts:', function () {
       let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts-missing.cf')
       await expect(postfixAccounts.accounts).to.deep.equal({})
     })
+  })
 
+  describe('the #reload function', function () {
+    it('should reload the loaded accounts file', async function () {
+      let postfixAccounts = await PostfixAccounts.load('test-tmp/fixtures/postfix-accounts.cf')
+      fs.writeFileSync('test-tmp/fixtures/postfix-accounts.cf', fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf'))
+      await postfixAccounts.reload()
+      await expect(postfixAccounts.accounts).to.deep.equal(fixtureOnlyRailtest)
+    })
   })
 
   describe('the #addUser function', function () {
@@ -165,13 +178,11 @@ describe('postfix-accounts:', function () {
 
   describe('the #save function', function () {
     it('should store the accounts into a file', async function () {
-      let postfixAccounts = await PostfixAccounts.load('test/fixtures/postfix-accounts.cf')
-      mockFs({
-        'test/fixtures/postfix-accounts.cf': fs.readFileSync('test/fixtures/postfix-accounts.cf')
-      })
+      let postfixAccounts = await PostfixAccounts.load('test-tmp/fixtures/postfix-accounts.cf')
       await postfixAccounts.removeUser('mailtest@test.knappi.org')
       await postfixAccounts.save()
-      await expect(fs.readFileSync('test/fixtures/postfix-accounts.cf','utf-8')).not.to.match(/mailtest/)
+      await expect(fs.readFileSync('test-tmp/fixtures/postfix-accounts.cf', 'utf-8'))
+        .to.equal(fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf', 'utf-8'))
     })
   })
 })
