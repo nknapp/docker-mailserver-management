@@ -25,7 +25,8 @@
     "coverage": "istanbul cover ./node_modules/.bin/_mocha",
     "postcoverage": "istanbul check-coverage coverage/coverage.raw.json --statements 100",
     "thought": "thought run -a",
-    "version": "thoughtful changelog -o -a && npm run thought"
+    "version": "thoughtful changelog -o -a && npm run thought",
+    "start": "node ./src/main.js -c /tmp/docker-mailserver"
   },
   "dependencies": {
     "bluebird": "^3.5.1",

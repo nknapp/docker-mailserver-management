@@ -1,0 +1,7 @@
+*
+
+!src
+!package.json
+!package-lock.json
+!README.md
+!entrypoint.sh
