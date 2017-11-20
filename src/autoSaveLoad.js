@@ -1,23 +1,53 @@
-// Listener for saving and reloading accounts automatically
-
 const chokidar = require('chokidar')
+const debug = require('debug')('docker-mailserver-management:autoSaveLoad')
 
-/**
- *
- * @param {PostfixAccounts} postfixAccounts
- */
-function autoSaveLoad (postfixAccounts) {
-  postfixAccounts.on('modified', () => postfixAccounts.save())
-  postfixAccounts.on('saved', (filename) => console.log(`Configuration saved to "${filename}"`))
-  postfixAccounts.on('loaded', (filename) => {
-    console.log(`Configuration loaded from "${filename}"`)
-    console.log('Configuration is now\n', postfixAccounts.accounts)
-  })
-  postfixAccounts.save()
+class AutoSaveLoad {
+  constructor (postfixAccounts) {
+    this.listeners = {
+      'modified': this.onModify.bind(this),
+      'saved': this.onSave.bind(this),
+      'loaded': this.onLoaded.bind(this)
+    }
 
-  const watcher = chokidar.watch(postfixAccounts.filename, {usePolling: true})
+    // Listener for postfix-accounts
+    this.postfixAccounts = postfixAccounts
+    Object.keys(this.listeners).forEach((eventName) => {
+      this.postfixAccounts.on(eventName, this.listeners[eventName])
+    })
 
-  watcher.on('change', () => postfixAccounts.reload())
+    // Listener for file changes
+    this.watcher = chokidar.watch(postfixAccounts.filename)
+    this.watcher.on('change', this.onChange.bind(this))
+
+    this.postfixAccounts.save()
+  }
+
+  onModify () {
+    this.postfixAccounts.save()
+  }
+
+  onLoaded (filename) {
+    debug(`Configuration loaded from "${filename}"`)
+    debug('Configuration is now\n', this.postfixAccounts.accounts)
+  }
+
+  onSave (filename) {
+    debug(`Configuration saved to "${filename}"`)
+  }
+
+  onChange () {
+    this.postfixAccounts.reload()
+  }
+
+  /**
+   * Deregister all listeners from the filesystem and the postfixAccounts-object
+   */
+  close () {
+    this.watcher.close()
+    Object.keys(this.listeners).forEach((eventName) => {
+      this.postfixAccounts.removeListener(eventName, this.listeners[eventName])
+    })
+  }
 }
 
-module.exports = {autoSaveLoad}
+module.exports = {AutoSaveLoad}

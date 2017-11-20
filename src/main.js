@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/* eslint-disable no-console */
+
 /*!
  * docker-mailserver-management <https://github.com/nknapp/docker-mailserver-management>
  *
@@ -14,8 +16,9 @@ const express = require('express')
 const app = express()
 const {createRouter} = require('./router')
 const {PostfixAccounts} = require('./postfix-accounts')
-const {autoSaveLoad} = require('./autoSaveLoad')
+const {AutoSaveLoad} = require('./autoSaveLoad')
 const path = require('path')
+const morgan = require('morgan')
 // require('trace-and-clarify-if-possible')
 
 const argv = require('yargs')
@@ -35,17 +38,36 @@ const accountsFile = path.join(argv['config-dir'], 'postfix-accounts.cf')
 
 async function run () {
   let postfixAccounts = await PostfixAccounts.load(accountsFile)
-  autoSaveLoad(postfixAccounts)
+  let autoSaveLoad = new AutoSaveLoad(postfixAccounts)
 
-  app.use(function (req, res, next) {
-    console.log(req.params)
-    return next()
-  })
+  app.use(morgan('tiny'))
   app.use(createRouter(postfixAccounts))
-  app.listen(argv.port, () => {
-    // eslint-disable-next-line no-console
-    return console.log(require('../package.json').name + 'listening on port ' + argv.port)
+  var server = app.listen(argv.port, () => {
+    let packageName = require('../package.json').name
+    return console.log(`${packageName} listening on port ${argv.port}`)
+  })
+
+  return new Promise((resolve, reject) => {
+    function shutdown () {
+      console.log('Shutting down server')
+      autoSaveLoad.close()
+      server.close((err) => err ? reject(err) : resolve())
+
+      setTimeout(() => {
+        console.log('Forcing shutdown')
+        process.exit(0)
+      }, 10 * 1000)
+    }
+
+    process.on('SIGINT', shutdown)
+    process.on('SIGTERM', shutdown)
   })
 }
 
-run().catch((err) => console.error('Error', err.stack))
+run().then(
+  () => {
+    console.log('Shutdown complete')
+    process.exit(0)
+  },
+  (err) => console.error('Error', err.stack)
+)

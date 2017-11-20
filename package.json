@@ -35,6 +35,7 @@
     "crypt3": "^1.0.0",
     "express": "^4.16.2",
     "lodash.debounce": "^4.0.8",
+    "morgan": "^1.9.0",
     "npm-check-updates": "^2.13.0",
     "pify": "^3.0.0",
     "thought": "^1.5.2",
@@ -43,6 +44,7 @@
   "devDependencies": {
     "chai": "^4.1.2",
     "cpr": "^3.0.1",
+    "debug": "^3.1.0",
     "dirty-chai": "^2.0.1",
     "eslint": "^4.10.0",
     "eslint-config-standard": "^10.2.1",
