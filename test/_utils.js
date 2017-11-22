@@ -11,6 +11,9 @@ const fixture = {
   'railtest@test.knappi.org': hashFor('abcd', '$6$y628bqC.aK2m.ncq')
 }
 
+const testTmp = 'test-tmp/fixtures'
+
+
 /**
  * Compute expected hash for a password
  * @param {string} password the password
@@ -20,34 +23,31 @@ function hashFor (password, salt) {
   return `{SHA512-CRYPT}${crypt(password, salt || SALT)}`
 }
 
+let originalSHA512Salter
+
 /**
- * Setup beforeEach and afterEach hooks that are generally needed.
- *
- * These do the following things:
- *
- * * Setup the mock salt to ensure deterministic hashes
- * * Restore the original salt function after each test
- * * Setup the tmp-directory before each test
+ * Setup the mock salt to ensure deterministic hashes
+ * Setup the tmp-directory before each test
  */
-function mochaSetup () {
-  /* eslint-env mocha */
-  let originalSHA512Salter
+async function beforeTest () {
+  await cpr('test/fixtures', testTmp, {deleteFirst: true})
 
-  beforeEach(async function () {
-    await cpr('test/fixtures', 'test-tmp/fixtures', {deleteFirst: true})
+  // mock "createSalt" to get deterministic hashes
+  originalSHA512Salter = crypt.createSalt.salters['sha512']
+  crypt.createSalt.salters['sha512'] = () => SALT
+}
 
-    // mock "createSalt" to get deterministic hashes
-    originalSHA512Salter = crypt.createSalt.salters['sha512']
-    crypt.createSalt.salters['sha512'] = () => SALT
-  })
-
-  afterEach(function () {
-    crypt.createSalt.salters['sha512'] = originalSHA512Salter
-  })
+/**
+ * Restore the original salt function after each test
+ */
+async function afterTest () {
+  crypt.createSalt.salters['sha512'] = originalSHA512Salter
 }
 
 module.exports = {
   fixture,
   hashFor,
-  mochaSetup
+  beforeTest,
+  afterTest,
+  testTmp
 }

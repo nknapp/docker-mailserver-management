@@ -43,13 +43,13 @@ describe('the autoSaveLoad-module:', function () {
   let postfixAccounts
   let autoSaveLoad
 
-  beforeEach(function () {
+  beforeEach(async function () {
     if (!fs.existsSync(path.dirname(configFile))) {
       fs.mkdirSync(path.dirname(configFile))
     }
     fs.writeFileSync(configFile, 'some contents', 'utf-8')
     postfixAccounts = new MockPostfixAccounts(configFile)
-    autoSaveLoad = new AutoSaveLoad(postfixAccounts)
+    autoSaveLoad = await AutoSaveLoad.for(postfixAccounts)
   })
 
   afterEach(function () {

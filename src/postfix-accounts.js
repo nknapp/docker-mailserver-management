@@ -2,6 +2,7 @@ const crypt = require('crypt3/sync')
 const pify = require('pify')
 const fs = pify(require('fs'))
 const events = require('events')
+const debug = require('debug')('docker-mailserver-management:postfix-accounts')
 
 /**
  * Class for managing the postfix-accounts file
@@ -112,8 +113,7 @@ class PostfixAccounts extends events.EventEmitter {
     } catch (e) {
       /* istanbul ignore else */
       if (e.code === 'ENOENT') {
-        // eslint-disable-next-line no-console
-        console.error(`File "${this.filename}" could not be found, creating empty postfix-accounts`)
+        debug(`File "${this.filename}" could not be found, creating empty postfix-accounts`)
       } else {
         throw e
       }

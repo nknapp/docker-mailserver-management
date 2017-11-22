@@ -1,6 +1,7 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const {AuthenticationError} = require('./postfix-accounts')
+const debug = require('debug')('docker-mailserver-management:router')
 
 /**
  * Creates an API router that exposes functions from postfixAccounts to the interface
@@ -14,12 +15,12 @@ function createRouter (postfixAccounts) {
   /**
    * Change the password of a user given the old password and the new password
    */
-  router.post('/user/:username', async function (req, res, next) {
+  router.post('/users/:username', async function (req, res, next) {
     try {
       const username = req.params.username
       const {oldPassword, newPassword} = req.body
       if (oldPassword == null || newPassword == null) {
-        throw new BadRequestError('Request must contain username, oldPassword and newPassword')
+        return next(new BadRequestError('Request must contain username, oldPassword and newPassword'))
       }
       await postfixAccounts.verifyAndUpdateUserPassword(username, oldPassword, newPassword)
       res.contentType('application/json')
@@ -36,8 +37,7 @@ function createRouter (postfixAccounts) {
    * Error handler
    */
   router.use(function (err, req, res, next) {
-    // eslint-disable-next-line no-console
-    console.error('Error', err.message, err.stack)
+    debug('Error', err.message, err.stack)
     if (err instanceof AuthenticationError) {
       return sendError(res, 403, 'Bad username or password')
     }

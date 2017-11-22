@@ -9,7 +9,7 @@
 
 const {PostfixAccounts, UserExistsError, NoUserError, AuthenticationError} = require('../src/postfix-accounts')
 const fs = require('fs')
-const {mochaSetup, fixture, hashFor} = require('./_utils')
+const {beforeTest, afterTest, fixture, hashFor} = require('./_utils')
 
 const chai = require('chai')
 chai.use(require('dirty-chai'))
@@ -37,7 +37,8 @@ const fixtureOnlyRailtest = {
 }
 
 describe('postfix-accounts:', function () {
-  mochaSetup()
+  beforeEach(beforeTest)
+  afterEach(afterTest)
 
   describe('the static method #createPasswordHash and #verifyPassword', function () {
     it('should create a password hash from a password in the dovecot form ({SHA-512}$6$...', async function () {

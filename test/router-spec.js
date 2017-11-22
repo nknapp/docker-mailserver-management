@@ -18,7 +18,7 @@ const chai = require('chai')
 chai.use(require('dirty-chai'))
 chai.use(require('chai-as-promised'))
 const expect = chai.expect
-const {mochaSetup, hashFor, fixture} = require('./_utils')
+const {beforeTest, afterTest, hashFor, fixture} = require('./_utils')
 
 describe('the router:', function () {
   var server
@@ -44,19 +44,23 @@ describe('the router:', function () {
     })
   })
 
-  // Setup tmp directory and salt
-  mochaSetup()
+  beforeEach(async function () {
+    await beforeTest()
+    return postfixAccounts.reload()
+  })
 
-  beforeEach(() => postfixAccounts.reload())
+  afterEach(async function () {
+    await afterTest()
+  })
 
   // invoke the rest-resource
   function verifyAndUpdate (username, oldPassword, newPassword) {
     return popsicle
-      .post({url: `${baseUrl}/user/${encodeURIComponent(username)}`, body: {oldPassword, newPassword}})
+      .post({url: `${baseUrl}/users/${encodeURIComponent(username)}`, body: {oldPassword, newPassword}})
       .use(popsicle.plugins.parse(['json']))
   }
 
-  describe('The /user/:username resource', function () {
+  describe('The /users/:username resource', function () {
     it('should write the new password if the old password is correct', async function () {
       const response = await verifyAndUpdate('mailtest@test.knappi.org', 'abc', 'ab')
 

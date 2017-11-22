@@ -2,7 +2,7 @@ const chokidar = require('chokidar')
 const debug = require('debug')('docker-mailserver-management:autoSaveLoad')
 
 class AutoSaveLoad {
-  constructor (postfixAccounts) {
+  async register (postfixAccounts) {
     this.listeners = {
       'modified': this.onModify.bind(this),
       'saved': this.onSave.bind(this),
@@ -19,7 +19,8 @@ class AutoSaveLoad {
     this.watcher = chokidar.watch(postfixAccounts.filename)
     this.watcher.on('change', this.onChange.bind(this))
 
-    this.postfixAccounts.save()
+    await this.postfixAccounts.save()
+    return this
   }
 
   onModify () {
@@ -47,6 +48,12 @@ class AutoSaveLoad {
     Object.keys(this.listeners).forEach((eventName) => {
       this.postfixAccounts.removeListener(eventName, this.listeners[eventName])
     })
+  }
+
+  static async for (postfixAccounts) {
+    const result = new AutoSaveLoad()
+    await result.register(postfixAccounts)
+    return result
   }
 }
 
