@@ -1,6 +1,6 @@
 {
   "name": "docker-mailserver-management",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "A management api and ui for the docker-mailserver project",
   "repository": {
     "type": "git",
