@@ -13,7 +13,6 @@ const fixture = {
 
 const testTmp = 'test-tmp/fixtures'
 
-
 /**
  * Compute expected hash for a password
  * @param {string} password the password
@@ -44,10 +43,36 @@ async function afterTest () {
   crypt.createSalt.salters['sha512'] = originalSHA512Salter
 }
 
+/**
+ * Unwrap template strings surrounded by `----` lines
+ */
+function unwrap (strings, ...substitutions) {
+  // First and last entry of "strings" is expected to be "-----"
+  let startMatch = strings[0].match(/^\n(\s*)----+\n/)
+  if (!startMatch) {
+    throw new Error('Expected first line to be like ------------ with a list four minus chars')
+  }
+
+  // Remove indent from each line
+  let indent = startMatch[1]
+  let stringsWithoutIndent = strings.map(str => str.split('\n' + indent).join('\n'))
+
+  // Remove starting boundary
+  stringsWithoutIndent[0] = stringsWithoutIndent[0].replace(/^\s*----+\n/, '')
+
+  // Remove ending boundary
+  let lastIndex = stringsWithoutIndent.length - 1
+  stringsWithoutIndent[lastIndex] = stringsWithoutIndent[lastIndex].replace(/\n----+\s*$/, '')
+
+  // rejoin strings and substitutions
+  return stringsWithoutIndent.map((str, index) => str + (substitutions[index] || '')).join('')
+}
+
 module.exports = {
   fixture,
-  hashFor,
-  beforeTest,
   afterTest,
-  testTmp
+  beforeTest,
+  hashFor,
+  testTmp,
+  unwrap
 }

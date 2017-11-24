@@ -69,5 +69,4 @@ describe('the autoSaveLoad-module:', function () {
     await new Promise((resolve) => setTimeout(resolve, 100))
     expect(reloadSpy.called).to.be.true()
   })
-
 })

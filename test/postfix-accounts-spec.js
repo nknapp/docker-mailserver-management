@@ -9,7 +9,8 @@
 
 const {PostfixAccounts, UserExistsError, NoUserError, AuthenticationError} = require('../src/postfix-accounts')
 const fs = require('fs')
-const {beforeTest, afterTest, fixture, hashFor} = require('./_utils')
+const path = require('path')
+const {beforeTest, afterTest, testTmp, fixture, hashFor, unwrap} = require('./_utils')
 
 const chai = require('chai')
 chai.use(require('dirty-chai'))
@@ -78,7 +79,12 @@ describe('postfix-accounts:', function () {
     it('should reload the loaded accounts file', async function () {
       let postfixAccounts = await PostfixAccounts.load('test-tmp/fixtures/postfix-accounts.cf')
       let events = eventCounter(postfixAccounts)
-      fs.writeFileSync('test-tmp/fixtures/postfix-accounts.cf', fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf'))
+      fs.writeFileSync('test-tmp/fixtures/postfix-accounts.cf', unwrap`
+          --------------------
+          railtest@test.knappi.org|${fixture['railtest@test.knappi.org']}
+          
+          --------------------
+      `)
       await postfixAccounts.reload()
       await expect(postfixAccounts.accounts).to.deep.equal(fixtureOnlyRailtest)
       expect(events.loaded, 'Checking "loaded" events').to.deep.equal([['test-tmp/fixtures/postfix-accounts.cf']])
@@ -190,8 +196,12 @@ describe('postfix-accounts:', function () {
       let events = eventCounter(postfixAccounts)
       await postfixAccounts.removeUser('mailtest@test.knappi.org')
       await postfixAccounts.save()
-      await expect(fs.readFileSync('test-tmp/fixtures/postfix-accounts.cf', 'utf-8'))
-        .to.equal(fs.readFileSync('test/fixtures/postfix-accounts-only-railtest.cf', 'utf-8'))
+      await expect(fs.readFileSync(path.join(testTmp, 'postfix-accounts.cf'), 'utf-8')).to.equal(unwrap`
+          --------------------
+          railtest@test.knappi.org|${fixture['railtest@test.knappi.org']}
+          
+          --------------------
+      `)
       expect(events.saved, 'Checking "saved" events').to.deep.equal([['test-tmp/fixtures/postfix-accounts.cf']])
     })
   })

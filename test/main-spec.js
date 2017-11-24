@@ -11,7 +11,6 @@ const {Main} = require('../src/main')
 const fs = require('fs')
 const path = require('path')
 
-// preconfigured popsicle for parsing json responses
 const got = require('got')
 const chai = require('chai')
 chai.use(require('dirty-chai'))
@@ -19,7 +18,7 @@ chai.use(require('chai-as-promised'))
 const expect = chai.expect
 const assert = chai.assert
 const {EventEmitter} = require('events')
-const {beforeTest, afterTest, testTmp, hashFor, fixture} = require('./_utils')
+const {beforeTest, afterTest, testTmp, hashFor, fixture, unwrap} = require('./_utils')
 
 /**
  * Mock class for replacing the postfixAccounts class
@@ -53,7 +52,6 @@ class MockConsole {
   trace (...args) {
     this.traceOutput.push(args)
   }
-
 }
 
 describe('the main-module:', function () {
@@ -64,7 +62,6 @@ describe('the main-module:', function () {
   beforeEach(async () => {
     mockConsole = new MockConsole()
     return beforeTest()
-
   })
 
   afterEach(async () => {
@@ -81,6 +78,15 @@ describe('the main-module:', function () {
         body: {oldPassword: 'abc', newPassword: 'abcd'}
       })
       await expect(result.body).to.deep.equal({success: true, username: 'mailtest@test.knappi.org'})
+
+      let newConfig = fs.readFileSync(path.join(testTmp, 'postfix-accounts.cf'), 'utf-8')
+      expect(newConfig, 'Checking config file').to.equal(unwrap`
+        -----------------------------------------------
+        railtest@test.knappi.org|${fixture['railtest@test.knappi.org']}
+        mailtest@test.knappi.org|${hashFor('abcd')}
+
+        -----------------------------------------------
+      `)
     } finally {
       await main.stop()
     }
